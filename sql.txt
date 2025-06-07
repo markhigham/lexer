@@ -1,0 +1,4 @@
+SELECT tblTableDefs.TableDefName, tblFields.FieldName, tblQueryDefs.QueryName, tblqdfFields.Alias, tblqdfFields.Expression
+FROM tblTableDefs INNER JOIN (tblQueryDefs INNER JOIN (tblqdfFields INNER JOIN (tblFields INNER JOIN tblqdfFieldsXRef ON tblFields.FieldID = tblqdfFieldsXRef.FieldID) ON tblqdfFields.QueryDefFieldID = tblqdfFieldsXRef.qdfFieldID) ON tblQueryDefs.QueryID = tblqdfFields.QueryDefID) ON tblTableDefs.TableDefID = tblFields.TableDefID
+WHERE (((tblTableDefs.TableDefName)="Wanker"))
+ORDER BY tblTableDefs.TableDefName, tblFields.FieldName;

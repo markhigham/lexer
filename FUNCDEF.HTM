@@ -1,0 +1,140 @@
+<HTML>
+<HEAD>
+<TITLE>lexer function definitions</TITLE>
+</HEAD>
+
+<BODY>
+<IMG SRC="title.gif">
+<H1>Lexer Function Definitions</H1>
+<HR>
+<H4>fLoadTreeFromLogfile(char *strLogFileName,Node **ppRootNode,LinkList **ppPathNames)
+</H4>
+Defined in <A HREF="lexer_c.htm#floadtree">lexer.c</A><P>
+<B>Overview</B><BR>
+Reads the logfile strLogFile to the btree pointed to by *ppRootNode and reads any of the previous textfile names to the linklist
+pointed to by *ppPathNames<P>
+
+Returns<BR>
+<B>TRUE</B> if the logfile is successfully loaded to the
+btree<BR>
+<B>FALSE</B> if there is any error in format of the logfile or the logfile does not
+exist<P>
+<B>Remarks:</B><BR>
+In an attempt to avoid overbalancing the btree, two lines are read at a time from the logfile (which is in aplha order) and they are added out	of order to the btree (This is a very weak method!)
+
+<HR>
+<H4>vSpoolLinks(File *, LinkList *)</H4> defined in lexer.c<P>
+<B>Overview</B><BR>
+Spools the contents of the linked list pointed to by the linklist pointer to the stream specified
+by the FILE pointer<P>
+
+Does not RETURN a value<P>
+
+<B>Remarks</B><BR>
+To spool a linked list to a file you must open the file first, then pass
+the file pointer with the linked list pointer to this function. It will
+spool all the items of the linked list to the file (appending a newline
+character after every item). Then you must close the file<P>
+
+To display the linked list on the console pass stdout as the file
+pointer<P>
+<HR>
+<H4>vFreeLink(LinkList *)</H4> Defined in lexer.c<P>
+<B>Overview</B><BR>
+Releases all memory allocated to the links in a linked list of type
+LinkList (defined in lexer.h)<BR>
+Does not return a value<P>
+<HR>
+<H4>fAddXNewItems(Node **ppNode,void *pvItem,long lCount, int(*iComp)(const void *)(const
+void *))</H4>
+Defined in <A HREF="btree.h>btree.h</A><P>
+<B>Overview</B><BR>
+Will add the item pvItem to a binary tree structure and will set the
+count of that item to lCount<BR>
+In traversing the binary tree, this function calls the supplied iCompare
+function which must be capable of comparing pvItems and which returns a
+value of &LT;0 if the new item is less than the item at the particular
+node, =0 if they are the same, or &GT>0 if the new item is greater<P>
+
+<B>Returns</B><BR>
+TRUE if the item has been added to the tree 
+FALSE if the new item is already in the tree; in which case the count
+for the item will have increased by iCount<P>
+
+<B>Remarks</B><BR>
+This function does not allocate memory for and copy the new item. It
+simply records the address of the item passed to it. As such the calling
+program can pass a pointer to an item to this function, and can free
+that pointer if the function returns FALSE<P>
+<HR>
+<H4>fAddNewItem(Node **,void *pvItem, int(*iComp)(const void *)(const
+void *))</H4>
+Defined in btree.h<P>
+<B>Remarks</B>
+A macro which expands to fAddXNewItems with an iCount value of ONE<P>
+<HR>
+<H4>vSpoolTree(FILE *fp,Node *pNode,void (*printITem)(FILE *fp,const
+void*)) void (*printCount)(FILE *fp, long lCount)<BR>
+vPrintTree(Node *,void (*printITem)(FILE *fp,const
+void*)) void (*printCount)(FILE *fp, long lCount)</H4>
+Defined in btree.h<P>
+<B>Overview</B><BR>
+Spools the contents of the binary tree in order to the stream pointed to
+by fp. The functions that actually spool the data must be passed by
+pointer and they must accept arguments as shown.<P>
+Do not return a value<P>
+<B>Remarks</B>
+vPrintTree is a macro which expands to vSpoolTree with the file pointer argument
+set to stdout<P>
+<HR>
+<A HREF="filuni_c.htm#fgetlowercaseword"><H4>flag fGetLowercaseWord( FILE *TextFile, char *strWord, size_t MaxLen
+)</H4></A>
+Defined in <A HREF="filesub.h">filesub.h</A><P>
+
+<B>Overview</B>
+Gets a Null terminated string of lowercase alphabetic characters from a file.
+(Characters other than 'A' - 'Z' and 'a' - 'z' are ignored.)<P>
+<B>Returns</B>
+ TRUE on success<BR>
+ FALSE at EOF<P>
+
+<B>Usage</B>
+<DL>
+<DT> while (fGetLowercaseWord(fp,strGetWord,1000)<BR>
+<DD>	puts(strGetWord);
+</DL>
+
+<B>Remarks</B><BR>
+Ensure that you have allocated enough space in strGetWord to accomodate
+ MaxLen characters.<BR>
+Encountering a word of greater than MaxLen characters will not cause
+ a failure but will truncate the word to MaxLen characters (including null
+ terminator) this will leave the file pointer mid-word and on the next call
+ the word may commence with the next character
+<P>
+<HR>
+<H4>fNewMemory(void **ppv, size_t size)</H4>
+Defined in <A HREF="memsub.h">memsub.h</A><P>
+<B>Remarks</B>
+A cover function for malloc which under DEBUG conditions asserts
+against invalid arguments<P>
+<B>Returns</B>
+TRUE on success<BR>
+FALSE on failure<P><HR>
+<H4>vFreeMemory(void *pv)</H4>
+Defined in memsub.h<P>
+<B>Remarks</B><BR>
+A cover function for the free standard library function - Allows under
+DEBUG compilation for the log of memory pointers to be maintained<P>
+<HR>
+<I>Mark Higham 1996</I>
+
+
+
+
+
+
+
+</BODY>
+</HTML>
+

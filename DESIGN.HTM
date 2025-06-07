@@ -1,0 +1,254 @@
+<HTML>
+<HEAD>
+<TITLE>design</TITLE>
+</HEAD>
+<BODY>
+<IMG SRC="title.gif">
+<!-- <H1>University of Central Lancashire - MSc Computing</H1>
+
+<H3>CO3200 Program Design - Assignment </H3><BR> -->
+<H3>Mark Higham 1996</H3>
+
+<HR>
+<H2>Lexer Program Design</H2>
+
+Contained in this file is the pseudo code for the lexer program starting
+from the top level with each item being decomposed into smaller later in the
+file.<BR>
+Control statements appear in upper case and <B>BOLD </B><BR>
+Procedures that are further decomposed appear in <I>italics </I>(HTML only)<BR>
+References to actual code are marked with the icon<IMG SRC="note.gif">
+<HR>
+<H3>Top Level:</H3>
+
+<B><A NAME="retchkvalopt">DO</A> </B><I><A HREF="#chkvaloptions">Check validity of users options</A></I><P>
+
+<B>DO</B><I><A NAME="retgetfullpathname"><A HREF="#getfullpathname">get full pathname for textfile</A></A></I><P>
+
+<B><A NAME="retrdtxtfile">DO</A> </B><I><A HREF="#rdtxtfile">Read textfile information</A></I><P>
+
+<DL>
+<DT><B>IF</B> The user has specified the logfile option<BR>
+<DD>	<B><A NAME="retreadloginfo">DO</A> </B><I><A HREF="#readloginfo">Read logfile information</A></I><P>
+
+</DL>
+
+<A NAME="retdispsortedwords"><B>DO</B><A HREF="#dispsortedwords"><I> display the sorted
+words</I></A><P></A>
+<DL>
+<DT><B>IF</B> The user has specified the logfile option<BR>
+<DD><B>DO</B> <I><A NAME="retcreatelogfile"><A HREF="#createlogfile">Create/Update the logfile</A></A></I><P>
+</DL>
+<A NAME="retdestroytree"><B>DO</B></A><I><A HREF="#destroytree"> 'destroy' the tree structure</A></I><P>
+<B>END</B>
+<!-- ---------------------------------------------------------------------------------------------- -->
+<HR>
+<H3><I><A NAME="chkvaloptions">Check validity of the user's options</A></I></H3>
+<IMG SRC="note.gif"><A HREF="lexer_c.htm#getcmdline"><B>DO </B>Get command line arguments<P></A>
+<DL>
+<DT><B>IF</B> There are no command line arguments
+<DD><B>	DO</B> Display usage
+<DD><B>	EXIT</B>
+</DL>
+<P>
+<DL>
+<DT><B>IF </B>the user has specified the logfile option
+<DD>	<B>DO </B>store the logfile name
+</DL>
+
+<DL>
+<DT><B>IF </B>the user has not specifed a textfile
+<DD>	<B>DO </B>Display usage
+<DD>	<B>EXIT</B>
+</DL>
+
+<DL>
+<DT><B>IF </B>the textfile does not exist
+<DD>	<B>DO </B>display error message
+<DD>	<B>EXIT</B>
+</DL>
+<A HREF="#retchkvalopt"><B>RETURN</B></A>
+<P>
+<HR>
+<!-- ----------------------------------------------------------------------------------------------------------------------- -->
+<H3><A NAME="readloginfo"><I>Read logfile information</I></A></H3>
+<IMG SRC="note.gif"><A HREF="lexer_c.htm#floadtree"> <I>fLoadTreeFromLogfile(char *,Node **, LinkList **)</I></A><P>
+<DL>
+<DT><B>IF </B>the logfile does not exist
+<DD>	<B>DO </B>set new logfile flag
+<DD>	<B>RETURN</B>
+</DL>
+<B>DO</B> open logfile
+
+<DL>
+<DT><B>IF</B> there are no words of the correct format in the logfile
+<DD>	<B>RETURN</B> with an error
+</DL>
+
+<DL>
+<DT><B>PERFORM UNTIL</B> there are no more words to be read from logfile
+<DD>	<B>DO</B> read first word and count
+<DD>	<B>IF</B> there is another word
+<DL><DD>		<B>DO</B> read second word and count</DL>
+
+<DD>	<B>IF</B> there was a second word
+<DL><DD>		<B>DO</B><A HREF="#addwordtotree"> <I>Add second word to tree structure</I></A></DL>
+<DD>	<B>DO</B><A HREF="#addwordtotree"> <I>Add first word to tree stucture</I></A>
+</DL>
+
+<DL>
+<DT><B>IF</B> there are no pathnames in logfile
+<DD>	<B>RETURN</B> with an error
+</DL>
+
+<DL>
+<DT><B>PERFORM WHILE</B> there are more pathnames to read
+<DD>	<B>DO</B> read pathname to pathname list
+</DL>
+<A HREF="#retreadloginfo"><B>RETURN</B></A>
+<!-- ---------------------------------------------------------------------------------------------- -->
+<HR>
+<H3><I><A NAME="rdtxtfile">Read textfile information</A></I></H3>
+
+
+<B>DO</B> open textfile
+
+<DL>
+<DT><B>PERFORM WHILE</B> there are still words to read in the textfile
+<DD>	<B>DO</B> <I><A HREF="#fgetlowercaseword">read a word and convert it to lowercase</A></I>
+
+
+<DL>
+<DT><B>IF</B> the length of the word is greater than the maximum allowed
+<DD>	<B>DO</B> display error
+<DD>	<B>EXIT</B>
+
+<DT><B>DO</B><A HREF="#addwordtotree"> <I>add word to tree</I></A>
+</DL></DL><P>
+<A HREF="#retrdtxtfile"><B>RETURN</B></A>
+
+<!-- ---------------------------------------------------------------------------------------------- -->
+<HR>
+<A NAME="fgetlowercaseword"><H3><I>read a word and convert it to lower case</I></H3></A>
+
+<IMG SRC="note.gif"><A HREF="filuni_c.htm#fgetlowercaseword"><I>fGetLowercaseWord(FILE *, char *, size_t)</I></A><P>
+
+<B>DO</B> ignore any whitespace characters until the first non-whitespace character is found
+
+<DL>
+<DT><B>PERFORM UNTIL </B> the next non alpha character <B>OR</B>  EOF is found <B>OR</B> the number of characters read is greater than the max
+<DD>	<B>DO</B> Get character from file
+<DD>	<B>DO</B> Convert to lower case
+<DD>	<B>DO</B> Add character to string
+</DL>
+
+<B>RETURN</B><P>
+
+
+<!-- ---------------------------------------------------------------------------------------------- -->
+<HR>
+<A NAME="addwordtotree"><H3><I>add a word to tree</I></H3></A>
+<IMG SRC="note.gif"><A HREF="btree_c.htm#faddxnewitems">fAddXNewItems(....)</A><P>
+
+<B>ARGUMENTS</B> A node of the tree, A new word, A count for the new word
+
+<DL>
+<DT><B>IF</B>  The node does not exist
+<DD>	<B>DO</B> Create a new node
+<DD>	<B>DO</B> Add the text and count to the new node
+<DD>	<B>RETURN</B>
+</DL>
+
+<DL>
+<DT><B>ELSE</B>
+<DD>	<B>DO</B> Compare the new text with the text at this node
+<DD><DL>	<B>IF</B> the lexical value of the new text is less
+<DD>		<B>DO</B> follow the left branch of the tree and repeat from <I>IF the node does not exist</I></DL>
+<DL><DT>	<B>ELSE IF</B> the lexical value of the new text is more
+<DD>		<B>DO</B> follow the right branch of the tree and repear from <I>IF the node does not exist</I></DL>
+<DD>	<B>ELSE</B> Increment the word counter at this node
+</DL>
+<B>RETURN</B>
+<!-- ---------------------------------------------------------------------------------------------- -->
+<HR>
+<A NAME="getfullpathname"><H3><I>get full pathname for textfile</I></H3></A>
+<IMG SRC="note.gif"><A HREF="filuni_c.htm#getabsfilename">fGetAbsFilename(char *strFile, char *strAbsFilename)</A><P>
+
+<B>DO</B> get current working directory<P>
+<B>DO</B> append the filename to the current working directory<P>
+<B><A HREF="#retgetfullpathname">RETURN</A></B>
+
+
+<!-- ---------------------------------------------------------------------------------------------- -->
+<HR>
+<A NAME="dispsortedwords"><H3><I>Display the sorted words</I></H3></A>
+<IMG SRC="note.gif"><A HREF="btree_c.htm#vspooltree">vSpoolTree(...)</A><P>
+<B>ARGUMENTS</B> a stream to which the data will be printed, a node of
+the tree, a function to print the text, a function to print the node
+count<P>
+
+<DL>
+<DT><B>IF</B> the node does not exist
+<DD><B>RETURN</B>
+</DL>
+
+<DL>
+<DT><B>ELSE</B>
+<DD><B>DO</B> follow the left branch of the tree and repeat from the
+<I>IF the node does not exist</I>
+<DD><B>DO</B> print the word to the stream
+<DD><B>DO</B> print the node count to the stream
+<DD><B>DO</B> follow the right branch of the tree and repeat from the
+<I>IF the node does not exist</I>
+</DL>
+<A HREF="#retdispsortedwords"><B>RETURN</B></A>
+<!-- ---------------------------------------------------------------------------------------------- -->
+<HR>
+<A NAME="createlogfile"><H3><I>Create/Update the logfile</I></H3></A>
+
+<B>DO</B> open the logfile for writing
+<DL>
+<DT><B>IF</B> the logfile cannot be opened for writing
+<DD><B>DO</B> display error message
+<DD><B>EXIT</B>
+</DL>
+<DL>
+<DT><B>ELSE</B>
+<DD><B>DO</B> spool the sorted words (the contents of the tree) to the
+logfile
+</DL>
+
+<DL>
+<DT><B>IF</B> the new logfile flag is <B>NOT</B> set
+<DD><B>DO</B> spool the previously read textfiles from the pathname list
+</DL>
+
+<B>DO</B> spool the current textfile name to the logfile<P>
+<A HREF="#retcreatelogfile"><B>RETURN</B></A>
+<!-- ---------------------------------------------------------------------------------------------- -->
+<HR>
+<H3><I><A NAME="destroytree">destroy the tree structure</A></I></H3>
+<IMG SRC="note.gif><A HREF="btree_c.htm#vspooltree">vChopDownTree(...)</A><P>
+<B>ARGUMENTS</B> a node of the tree, a pointer to a function to delete
+an item within a node
+
+<DL>
+<DT><B>IF</B> the node does not exist
+<DD><B>RETURN</B>
+</DL>
+<DL>
+<DT><B>ELSE</B>
+<DD><B>DO</B> follow the left branch and repeat from <I>IF the node does
+not exist</I>
+<DD><B>DO</B> follow the right branch and repear from <I>IF the node
+does not exist</I>
+<DD><B>DO</B> free the item (text) stored in this node (call the
+function)
+<DD><B>DO</B> free the node
+</DL>
+<A HREF="#retdestroytree"><B>RETURN</B></A>
+<P>
+
+</BODY>
+</HTML>
+

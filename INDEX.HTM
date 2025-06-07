@@ -1,0 +1,87 @@
+<HTML>
+<HEAD>
+<TITLE>lexer index</TITLE>
+</HEAD>
+
+<BODY>
+<IMG SRC="title.gif">
+<HR>
+<H3>Overview</H3>
+This program meets with the specification in all ways:<BR>
+The code is split into four code modules
+<UL>
+<LI><A HREF="lexer.c">lexer.c</A> The main function and any specific support functions are contained here - The support functions
+are left here because they no great reusable value
+<LI><A HREF="btree.c">btree.c</A> contains the support functions concerned with implementing
+the binary tree. These functions are reusable, however they must be used
+with the memory cover functions contained in memsub.c
+<LI><A HREF="memsub.c">memsub.c</A> Contains support functions for memory allocation and
+release
+<LI><A HREF="filunix.c">filunix.c</A> contains reusable file based sub functions
+</UL>
+
+Function definitions and macro declarations are contained in the
+corresponding header files (<A HREF="lexer.h">lexer.h</A>,<A HREF="btree.h">btree.h</A>,<A HREF=
+"memsub.h">memsub.h</A>,<A HREF="filesub.h">filesub.h</A>)
+
+<HR>
+<A HREF="design.htm"><H3>Design Documentation</H3></A>
+Contains the pseudo code and follows the functional decomposition of the program
+<HR>
+<H3>Debug information</H3>
+All functions use the assert macro to make program debugging easier. I
+am not going to document where, or for what these assertions test
+because this may undermine the usefulness. If any programmer uses these
+support functions according to the documentation then none of the
+assertions will fire.<P>
+
+The header file <A HREF="debug.h">debug.h</A> is included in all of the
+source code files. By commenting out the definition of the macro DEBUG
+the code will be compiled without any of the assertions or other debug
+code.<P>
+
+With DEBUG defined I have used a DEBUG only function <A
+HREF="memsub.c">ulNoBlocks</A> which returns the number of blocks of
+memory that have been allocated with fNewMemory and destroyed with
+FreeMemory. At the end of the main function the program will display if
+there are any <I>unfreed</I> blocks. This enabled me to correct any errors from allocating and releasing memory around and inside
+recursive functions.
+<HR>
+<A HREF="funcdef.htm"><H3>Function Descriptions</H3></A>
+A list of the functions used in the lexer program<P>
+<HR>
+<H3>Comments</H3>
+The program was written with a view to portability. There are only small
+modifications that need to be made for the compilation on a MS-DOS
+machine or under UNIX. (These changes involve the commenting out or
+removing of the '#include' for UNIX header files. The precompiler direcives take care
+of the rest).<P>
+The support functions lend themselves to being reusable. The btree
+functions for instance can operate on any kind of item, as the comparison
+and printing functions are supplied by the caller. This may make for messy looking function
+definitions but makes the functions themselves more powerful<P> 
+
+The executable file from the source code here will count the words in a
+500K text file quite easily. I have not tested on any file of greater
+length. I have not tried appending this 500K file to itself as it would
+not significantly test the code - For every appended part the words
+would all be duplicates and the tree would not expand<P>
+
+The function that reads the logfile is very poor. By this I mean that it
+does not sufficiently cope with the problems of reading a presorted list
+to a binary tree - Unbalancing.<BR>
+My solution to this would come the upgrade version which would
+incorporate a fBalanceTree() function. This would scan a binary tree and
+rebalance it, and it would be called after either 3,7,15,31 etc calls to
+fAddXNewItems().<P>
+
+It would be relatively simple to add more command line flags for extra
+functionalilty. Ideas could be to include digits
+as being words or part of words, or to sort the words into reverse order
+- This would involve only changing the return value of the compare
+function passed to fAddXNewItems.
+<HR>
+<I>Mark Higham 1996</I>
+
+</UL></BODY>
+</HTML>

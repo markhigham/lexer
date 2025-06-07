@@ -1,0 +1,429 @@
+<HTML><HEAD>
+<TITLE>lexer.c
+</TITLE>
+</HEAD><BODY>
+<IMG SRC="title.gif">
+<H1><IMG SRC="note.gif">lexer.c</H1><HR>
+<PRE>
+#include "debug.h"
+
+#include "lexer.h"
+#include "memsub.h"
+#include "btree.h"
+#include "filesub.h"
+
+#include &LT;io.h&GT;
+#include &LT;assert.h&GT;
+#include &LT;stdio.h&GT;
+#include &LT;stdlib.h&GT;
+#include &LT;string.h&GT;
+
+#ifndef MAXPATH
+	#include <dir.h>
+#endif
+
+
+/* flag which is set if the logfile does not exist */
+static flag fNewLogFile=TRUE;
+
+
+/* Function passes by address to btree function to compare two items
+	in this case two (null terminated) strings */
+int iCompareItems(const void *pvItem1, const void *pvItem2)
+/* Function to compare two items - is passed by pointer to the btree routines */
+{
+	assert( pvItem1 != NULL && pvItem2 != NULL);
+	return(strcmp(pvItem1,pvItem2));
+}
+
+/* Function passed to btree print and spool functions which prints the contents
+	of the btree item, in this case a string */
+void vPrintItem(FILE *fp,const void *pvItem)
+{
+	assert ( pvItem != NULL );
+	fprintf(fp,"%s\t",pvItem);
+}
+
+/* Function passed to btree print and spool functions which prints the item
+	count to the stream specified by fp */
+void vPrintCount(FILE *fp,long lCount)
+{
+	fprintf(fp,"%ld\n",lCount);
+}
+
+/* Function passed by pointer to vChopDownTree
+	Frees the memory allocated for the item in a node of the btree */
+void vFreeItem(void *pvItem)
+{
+	assert ( pvItem != NULL );
+	FreeMemory(pvItem);
+}
+/* ########### MAIN PROGRAM STARTS HERE ######################### */
+int main(int argc, char **argv)
+{
+
+/* Function prototypes for the support functions in this file - lexer.c */
+	flag fLoadTreeFromLogFile(char *,Node **,LinkList **);
+	void vSpoolLinks(FILE *,LinkList *);
+	void vFreeLink(LinkList *);
+
+/*	Variable definitions/initialisations */
+	char *strProgName = *argv;
+	char *strLogFileName;
+	char strTextFileName[MAXABSPATH];
+	char *strWord;
+	char strGetWord[MAXWORDLEN+1];
+	byte bMask;
+	byte bCmdFlag = 0;
+	Node *pRootNode = NULL;
+	LinkList *pPathNames;
+
+	FILE *fpTextFile;
+	FILE *fpLogFile;
+</PRE>
+<A NAME="getcmdline">/* Check for minimum required cmd line arguments */</A>
+<PRE>
+	if (argc < 2)
+		goto Usage;
+
+/* Get command line arguments - adapted from code by K.Rowley */
+	while ((*++argv != NULL) && (**argv == '-')) {
+		while (*++*argv != '\0') {
+			switch (**argv) {
+				case 'l'   :   bMask = L_FLAG;
+							break;
+
+				default   :   goto Unknown_flag;
+			}
+			bCmdFlag |= bMask;
+		}
+	}
+
+/* If the logfile command line flag is set
+		then Get Logfile name
+	If there is no logfile name specified
+		then exit with error message
+	else store logfile name */
+	if ( bCmdFlag & L_FLAG ) {
+		if ( NULL == *argv )
+			goto Usage;
+
+		strLogFileName = *argv++;
+	}
+
+/* if there is a textfile name in command line arguments
+		then get text filename
+	else exit with error message */
+	if ( NULL == *argv )
+		goto Usage;
+
+/* Get full path for textfilename */
+	if (!fGetAbsFilename(*argv,strTextFileName,MAXABSPATH)) {
+		perror(*argv);
+		exit(EXIT_FAILURE);
+	}
+
+
+/* If textfile exists
+		then open textfile and read words to tree
+	else exit with error message */
+	if ( NULL == (fpTextFile = fopen(strTextFileName,"r") ) ) {
+		perror(strTextFileName);
+		exit(EXIT_FAILURE);
+	}
+
+/* while there are still words to read in textfile
+		read a word and convert it to lower case
+		 if the length of the word is greater than the maximum allowed (MAXWORDLEN)
+			then exit with error message */
+	while (fGetLowercaseWord(fpTextFile,strGetWord,MAXWORDLEN)) {
+		if (strlen(strGetWord)==MAXWORDLEN) {
+			fprintf(stderr,"Error\n%s\nis at least %d characters and cannot possibly be a valid word\n",strGetWord,MAXWORDLEN);
+			exit(EXIT_FAILURE);
+		}
+/* allocate memory for the new word */
+		if (!fNewMemory((void *)&strWord,strlen(strGetWord)+1)) {
+			fputs("Memory allocation error\n",stderr);
+			exit(EXIT_FAILURE);
+		}
+		strcpy(strWord,strGetWord);
+
+/*	If the word is added to the tree
+		great
+	else release the memory allocated for the word as it must be a duplicate */
+		if (!fAddNewItem(&pRootNode,strWord,iCompareItems))
+			FreeMemory(strWord);
+
+	}
+/*	close the text file */
+	fclose(fpTextFile);
+
+/* If logfile flag is set
+		then open logfile and load tree
+	on a logfile error exit with error message */
+	if ( (bCmdFlag & L_FLAG) && !access(strLogFileName,0x00) ) {
+		if (!fLoadTreeFromLogFile(strLogFileName,&pRootNode,&pPathNames)) {
+			fputs("Error in logfile\n",stderr);
+			exit(EXIT_FAILURE);
+		}
+	}
+/* Print the tree to the standard output device */
+	vPrintTree(pRootNode,vPrintItem,vPrintCount);
+
+/*	if logfile flag is set
+		then open a the logfile for writing
+	if the logfile cannot be opened for writing
+		then exit with the system error message */
+	if ( bCmdFlag & L_FLAG ) {
+		if ( NULL == ( fpLogFile = fopen (strLogFileName,"wt") ) ) {
+			perror(strLogFileName);
+			exit(EXIT_FAILURE);
+		}
+
+/* Spool the contents of the tree to the logfile */
+		vSpoolTree(fpLogFile,pRootNode,vPrintItem,vPrintCount);
+
+/*	if the logfile previously existed
+		then add the previous textfile names */
+
+		fprintf(fpLogFile,"\n");
+
+		if (!fNewLogFile) {
+			vSpoolLinks(fpLogFile,pPathNames);
+			vFreeLink(pPathNames);
+		}
+
+/*	Add the current textfile name to the logile and close the logfile */
+		fprintf(fpLogFile,"%s\n",strTextFileName);
+		fclose(fpLogFile);
+	}
+
+/* release all memory associated with the tree */
+	vChopDownTree(pRootNode,vFreeItem);
+
+/* debug only function
+	This will output if there are any hanging pointers.
+	NB only memory allocated with fNewMemory() which is subsequently freed
+	with FreeMemory() will be logged and be picked up by this function */
+	#ifdef DEBUG
+		if (ulNoBlocks())
+			printf("DEBUG: There are %d pointers NOT freed\n",ulNoBlocks());
+	#endif
+	return(TRUE);
+
+/**************************************************************
+	END OF main()
+****************************************************************/
+
+	Unknown_flag:
+	fprintf(stderr,"Unknown flag in command line\n");
+	exit(EXIT_FAILURE);
+
+/* command exit point for invalid command line arguments */
+	Usage:
+	fprintf(stderr,"Usage: %s [-l logfile] textfile\n",strProgName);
+	exit(EXIT_FAILURE);
+
+
+	/* This is to stop the annoying 'function main must return a value' compiler
+	warning and will never be reached */
+	return(0);
+}
+/* Function
+</PRE>
+<A NAME="floadtree"><H3> fLoadTreeFromLogfile</H3></A>
+<PRE>
+ reads the logfile strLogFile to the btree pointed
+	to by *ppRootNode and reads any of the previous textfile names to the linklist
+	pointed to by *ppPathNames
+	Returns TRUE if the logfile is successfully loaded to the btree
+			  FALSE if there is any error in format of the logfile or the logfile
+			  does not exist
+
+	Remarks: In an attempt to avoid overbalancing the btree, two lines are read
+	at a time from the logfile (which is in aplha order) and they are added out
+	of order to the btree (This is a very weak method!)
+*/
+
+fLoadTreeFromLogFile(char *strLogFileName,Node **ppRootNode,LinkList **ppPathNames)
+
+{
+
+	void vStripNewLine(char *);
+
+	FILE *fpLogFile;
+	char strLogFileBuffer_1[MAXWORDLEN+12]; /* +12 allows for tab 10 digit number and newline */
+	char strLogFileBuffer_2[MAXWORDLEN+12];
+	char strGetWord[MAXWORDLEN+1];
+	char *strWord;
+	LinkList *pLinkTemp;
+
+
+	assert(strLogFileName != NULL);
+	assert(ppRootNode != NULL);
+	assert(ppPathNames != NULL);
+
+	/* Check if logfile exists */
+	if ( NULL == ( fpLogFile = fopen(strLogFileName,"r") ) ) {
+		goto LogFile_Error;
+	}
+	else {
+		flag fFinished=FALSE; /* local scope to this else {} */
+		long lTemp;
+		fNewLogFile=FALSE;
+		do {
+			/*Get line from logfile */
+			/* If eof then error in logfile -> EXIT */
+			if ( NULL == fgets(strLogFileBuffer_1,MAXWORDLEN+12,fpLogFile))
+				goto LogFile_Error;
+
+			/* if a newline character then all words are read. Go on to
+				read pathnames */
+			if (strLogFileBuffer_1[0] == '\n')
+				fFinished=TRUE;
+			else {
+			/* Get another line */
+			/* If eof then error in logfile -> EXIT */
+				if ( NULL == fgets(strLogFileBuffer_2,MAXWORDLEN+12,fpLogFile))
+					goto LogFile_Error;
+
+				/* If not newline then add buffer 2 first */
+				if ( strLogFileBuffer_2[0] != '\n') {
+					if (2 != sscanf(strLogFileBuffer_2,"%s %ld",strGetWord,&lTemp))
+						goto LogFile_Error;
+
+					if (!fNewMemory((void *)&strWord,strlen(strGetWord)+1))
+						goto LogFile_Error;
+
+					strcpy(strWord,strGetWord);
+						if (!fAddXNewItems(ppRootNode,strWord,lTemp,iCompareItems))
+						FreeMemory(strWord);
+					}
+				/* if a newline then go on to read pathnames */
+				else fFinished=TRUE;
+					/* add buffer 2 */
+				if ( 2 != sscanf(strLogFileBuffer_1,"%s %ld",strGetWord,&lTemp))
+					goto LogFile_Error;
+
+				if (!fNewMemory((void *)&strWord,strlen(strGetWord)+1))
+					goto LogFile_Error;
+
+				strcpy(strWord,strGetWord);
+				if (!fAddXNewItems(ppRootNode,strWord,lTemp,iCompareItems))
+					FreeMemory(strWord);
+				}
+		} while (!fFinished);
+		/* Get the first (maybe only) pathname */
+		if ( NULL == fgets(strLogFileBuffer_1,MAXPATH,fpLogFile)) {
+			goto LogFile_Error;
+		}
+
+		else {
+			vStripNewLine(strLogFileBuffer_1);
+
+			if (!fNewMemory( (void *)ppPathNames,sizeof(LinkList)) ) {
+				fputs("Memory Allocation Error\n",stderr);
+				exit(EXIT_FAILURE);
+			}
+
+			else {
+				(*ppPathNames)->next = NULL;
+				if (!fNewMemory( (void *)& ( (*ppPathNames)->strText),strlen(strLogFileBuffer_1))) {
+					fputs("Memory allocation error\n",stderr);
+					exit(EXIT_FAILURE);
+				}
+				else strcpy( (*ppPathNames)->strText,strLogFileBuffer_1);
+
+			}
+		}
+
+		/* Get any other pathnames */
+
+		pLinkTemp=*ppPathNames;
+		while ( NULL != fgets(strLogFileBuffer_1,MAXPATH,fpLogFile)) {
+		/* Strip away the newline character */
+			vStripNewLine(strLogFileBuffer_1);
+
+			pLinkTemp=*ppPathNames;
+			while ( NULL != pLinkTemp->next ) {
+				pLinkTemp=pLinkTemp->next;
+			}
+
+			if (!fNewMemory( (void *)&(pLinkTemp->next),sizeof(LinkList) ) ) {
+				fputs("Memory allocation error",stderr);
+				exit(EXIT_FAILURE);
+			}
+			else {
+				(pLinkTemp->next)->next=NULL;
+				if (!fNewMemory( (void *) &((pLinkTemp->next)->strText),sizeof(strLogFileBuffer_1) ) ) {
+					fputs("Memory allocation error",stderr);
+					exit(EXIT_FAILURE);
+				}
+				strcpy((pLinkTemp->next)->strText,strLogFileBuffer_1);
+
+			}
+
+
+		}
+
+	fclose(fpLogFile);
+	}
+	return(TRUE);
+
+	LogFile_Error:
+	fclose(fpLogFile);
+	return(FALSE);
+
+}
+
+/*	Frees all memory allocated to the linked list of type LinkList - see lexer.h */
+void vFreeLink(LinkList *pLink)
+{
+
+	LinkList *pLinkTemp;
+
+	if (pLink->next != NULL) {
+		while ((pLink->next)->next != NULL) {
+			pLinkTemp=pLink;
+
+			while ( NULL != (pLinkTemp->next)->next ) {
+					pLinkTemp=pLinkTemp->next;
+			}
+
+			FreeMemory((pLinkTemp->next)->strText);
+			FreeMemory(pLinkTemp->next);
+			pLinkTemp->next=NULL;
+		}
+		FreeMemory( (pLink->next)->strText );
+		FreeMemory( pLink->next );
+	}
+
+	FreeMemory(pLink->strText);
+	FreeMemory(pLink);
+
+
+}
+
+/* Replaces the first occurance of a newline character with the null character
+	Useful in combination with fgets which reads a line from a stream including
+	the newline character */
+void vStripNewLine(char *strText)
+{
+	int i=0;
+	while ( '\n' !=  strText[i])
+		i++;
+	strText[i]='\0';
+}
+
+/*	Prints to a stream the text content of the linklist type LinkList - lexer.h */
+void vSpoolLinks(FILE *fpStream,LinkList *pPathNames)
+{
+
+	while ( pPathNames!=NULL ) {
+		fprintf(fpStream,"%s\n",pPathNames->strText);
+		pPathNames=pPathNames->next;
+	}
+}
+</PRE>
+</BODY></HTML>
+
